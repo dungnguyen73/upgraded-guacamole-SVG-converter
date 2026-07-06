@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PNG→SVG Centerline Evaluation</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Rethink Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #FFFFFF;
+      background: #000000;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000000;
+      color: #FFFFFF;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    header {
+      padding: 64px 24px 40px;
+      background: linear-gradient(180deg, #111827 0%, #000000 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(2.8rem, 2.2rem + 1.8vw, 4.4rem);
+      line-height: 0.98;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      max-width: 10ch;
+    }
+    header p {
+      margin: 20px 0 0;
+      max-width: 760px;
+      font-size: 1.05rem;
+      line-height: 1.8;
+      color: #D1D5DB;
+    }
+    header .hero-actions {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.06);
+      color: #F8FAFC;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    main {
+      padding: 0 24px 48px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 24px;
+    }
+    .toolbar label {
+      font-size: 0.95rem;
+      color: #E5E7EB;
+      min-width: 110px;
+    }
+    .toolbar select,
+    .toolbar button,
+    .toolbar input[type=file] {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #FFFFFF;
+      border-radius: 8px;
+      padding: 12px 14px;
+      min-height: 44px;
+      font: inherit;
+      outline: none;
+    }
+    .toolbar select option {
+      color: #000000;
+    }
+    .toolbar select,
+    .toolbar input[type=file] {
+      min-width: 220px;
+    }
+    .toolbar button {
+      background: #F85252;
+      border: none;
+      color: #FFFFFF;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+    .toolbar button:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+    .toolbar a {
+      color: #3B82F6;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .toolbar a:hover {
+      text-decoration: underline;
+    }
+    .server-note {
+      margin-top: 18px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #9CA3AF;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+    .grid {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      margin-top: 24px;
+    }
+    .panel {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+    }
+    .panel h2 {
+      margin: 0 0 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #FFFFFF;
+    }
+    .viewer-frame {
+      width: 100%;
+      min-height: 520px;
+      border-radius: 18px;
+      background: #050608;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .viewer-frame img,
+    .viewer-frame object {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      display: block;
+    }
+    .status {
+      margin-top: 14px;
+      color: #94A3B8;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .upload-panel {
+      margin-top: 30px;
+      display: grid;
+      gap: 20px;
+    }
+    .upload-results {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px;
+      color: #E5E7EB;
+      min-height: 86px;
+    }
+    #uploadForm {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    #uploadInput {
+      flex: 1 1 220px;
+      min-width: 180px;
+    }
+    .note {
+      color: #94A3B8;
+      margin-top: 10px;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+    @media (max-width: 720px) {
+      header { padding: 40px 18px 28px; }
+      main { padding: 0 18px 36px; }
+      .viewer-frame { min-height: 380px; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .toolbar button { width: 100%; }
+      .panel { padding: 18px; }
+      .grid { gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero-copy">
+      <h1>PNG → SVG Centerline Evaluation</h1>
+      <p>Compare original PNG icons, reference SVGs, converted SVG output, and overlay diagnostics in one polished visual workspace. Upload a PNG and get a generated centerline SVG instantly.</p>
+      <div class="hero-actions">
+        <!-- <span class="pill">Dark mode analytics</span>
+        <span class="pill">Pictographic-inspired interface</span> -->
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="toolbar">
+      <label for="shapeSelect">Select Shape:</label>
+      <select id="shapeSelect"></select>
+      <button id="reloadButton" type="button">Refresh</button>
+      <a href="visualizations/overlay/" target="_blank">Open overlay folder</a>
+    </div>
+    <div class="server-note">Serve this page via <code>python src/upload_server.py</code> and open <code>http://localhost:8000/index.html</code> for upload support.</div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Original PNG</h2>
+        <div class="viewer-frame"><img id="originalViewer" src="" alt="Original PNG" /></div>
+        <div class="status" id="originalStatus"></div>
+      </div>
+      <div class="panel">
+        <h2>Reference SVG</h2>
+        <div class="viewer-frame"><object id="referenceViewer" type="image/svg+xml" data=""></object></div>
+        <div class="status" id="referenceStatus"></div>
+      </div>
+      <div class="panel">
+        <h2>Converted SVG</h2>
+        <div class="viewer-frame"><object id="convertedViewer" type="image/svg+xml" data=""></object></div>
+        <div class="status" id="convertedStatus"></div>
+      </div>
+      <div class="panel">
+        <h2>Overlay Diagnostic</h2>
+        <div class="viewer-frame"><img id="overlayViewer" src="" alt="Overlay Visualization" /></div>
+        <div class="status" id="overlayStatus"></div>
+      </div>
+    </div>
+
+    <section class="upload-panel">
+      <div class="panel">
+        <h2>Upload a PNG</h2>
+        <p class="note">Upload a PNG file and receive a generated SVG centerline. The server will convert the image and return an SVG for preview and download.</p>
+        <form id="uploadForm">
+          <input id="uploadInput" type="file" accept="image/png" />
+          <button type="submit">Convert PNG to SVG</button>
+        </form>
+        <div class="upload-results" id="uploadResults"></div>
+      </div>
+      <div class="panel">
+        <h2>Upload Output</h2>
+        <div class="viewer-frame"><object id="uploadViewer" type="image/svg+xml" data=""></object></div>
+        <div class="status" id="uploadStatus"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SHAPES = [
+      'letter_H', 'letter_K', 'arrow-turn-down-left',
+      'arrow-pointer', 'number_3', 'number_6', 'ampersand'
+    ];
+
+    const assetRoot = window.location.protocol === 'file:'
+      ? '.'
+      : window.location.origin;
+
+    const paths = {
+      original: shape => `${assetRoot}/pictographic-challenge/challenge_sample/${shape}.png`,
+      reference: shape => `${assetRoot}/pictographic-challenge/challenge_sample_results/${shape}.svg`,
+      converted: shape => `${assetRoot}/converted-results/${shape}.svg`,
+      overlay: shape => `${assetRoot}/visualizations/overlay/viz_overlay_${shape}.png`
+    };
+
+    const shapeSelect = document.getElementById('shapeSelect');
+    const originalViewer = document.getElementById('originalViewer');
+    const referenceViewer = document.getElementById('referenceViewer');
+    const convertedViewer = document.getElementById('convertedViewer');
+    const overlayViewer = document.getElementById('overlayViewer');
+    const originalStatus = document.getElementById('originalStatus');
+    const referenceStatus = document.getElementById('referenceStatus');
+    const convertedStatus = document.getElementById('convertedStatus');
+    const overlayStatus = document.getElementById('overlayStatus');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadInput = document.getElementById('uploadInput');
+    const uploadResults = document.getElementById('uploadResults');
+    const uploadViewer = document.getElementById('uploadViewer');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const reloadButton = document.getElementById('reloadButton');
+
+    function populateShapes() {
+      SHAPES.forEach(shape => {
+        const option = document.createElement('option');
+        option.value = shape;
+        option.textContent = shape;
+        shapeSelect.appendChild(option);
+      });
+    }
+
+    function setViewerSource(element, url, statusElement) {
+      if (!url) {
+        element.removeAttribute('src');
+        element.removeAttribute('data');
+        statusElement.textContent = 'Missing file path';
+        return;
+      }
+      if (element.tagName.toLowerCase() === 'object') {
+        element.data = url;
+      } else {
+        element.src = url;
+      }
+      statusElement.textContent = url;
+    }
+
+    function updateView() {
+      const shape = shapeSelect.value;
+      setViewerSource(originalViewer, paths.original(shape), originalStatus);
+      setViewerSource(referenceViewer, paths.reference(shape), referenceStatus);
+      setViewerSource(convertedViewer, paths.converted(shape), convertedStatus);
+      setViewerSource(overlayViewer, paths.overlay(shape), overlayStatus);
+    }
+
+    function getUploadEndpoint() {
+      if (window.location.protocol === 'file:') {
+        return 'http://localhost:8000/upload';
+      }
+      return `${window.location.origin}/upload`;
+    }
+
+    async function uploadPng(event) {
+      event.preventDefault();
+      uploadResults.textContent = '';
+      uploadStatus.textContent = '';
+      uploadViewer.removeAttribute('data');
+      const endpoint = getUploadEndpoint();
+      uploadStatus.textContent = `Uploading to ${endpoint}...`;
+
+      const file = uploadInput.files[0];
+      if (!file) {
+        uploadResults.textContent = 'Please select a PNG file to upload.';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          uploadResults.textContent = `Upload failed: ${response.status} ${response.statusText} - ${errorText}`;
+          return;
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          uploadResults.textContent = `Conversion failed: ${result.error || 'unknown error'}`;
+          return;
+        }
+
+        uploadResults.innerHTML = `Converted SVG: <a href="${result.svg_url}" target="_blank">${result.filename}</a>`;
+        uploadViewer.data = result.svg_url;
+        uploadStatus.textContent = `Saved to ${result.svg_url}`;
+      } catch (error) {
+        uploadResults.textContent = `Upload error: ${error.message}`;
+      }
+    }
+
+    function init() {
+      populateShapes();
+      updateView();
+      shapeSelect.addEventListener('change', updateView);
+      reloadButton.addEventListener('click', updateView);
+      uploadForm.addEventListener('submit', uploadPng);
+    }
+
+    init();
+  </script>
+</body>
+</html>
