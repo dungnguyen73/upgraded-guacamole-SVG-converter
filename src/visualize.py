@@ -7,6 +7,7 @@ Visual diagnostics (pure Python, writes PNGs):
                                                   gray covered, red missed, blue overshoot
 """
 
+import os
 import sys
 import math
 import zlib
@@ -18,6 +19,52 @@ from test_compare import (parse_svg_paths, path_to_subpaths,
 
 SHAPES = ["letter_H", "letter_K", "arrow-turn-down-left",
           "arrow-pointer", "number_3", "number_6", "ampersand"]
+
+
+def _repo_root():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _resolve_input_png(name):
+    repo_root = _repo_root()
+    candidates = [
+        os.path.join(repo_root, "input", f"{name}.png"),
+        os.path.join(repo_root, "pictographic-challenge", "challenge_sample", f"{name}.png"),
+        os.path.join(repo_root, "challenge_sample", f"{name}.png"),
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return candidates[0]
+
+
+def _resolve_svg_path(name, which="out"):
+    repo_root = _repo_root()
+    if which == "out":
+        candidates = [
+            os.path.join(repo_root, "converted-results", f"{name}.svg"),
+            os.path.join(repo_root, "preview-results", f"{name}.svg"),
+            os.path.join(repo_root, "out", f"{name}.svg"),
+        ]
+    else:
+        candidates = [
+            os.path.join(repo_root, "pictographic-challenge", "challenge_sample_results", f"{name}.svg"),
+            os.path.join(repo_root, "challenge_sample_results", f"{name}.svg"),
+        ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return candidates[0]
+
+
+def _visualization_output_dir(kind):
+    out_dir = os.path.join(_repo_root(), "visualizations", kind)
+    os.makedirs(out_dir, exist_ok=True)
+    return out_dir
+
+
+def _output_path(stem, kind):
+    return os.path.join(_visualization_output_dir(kind), f"viz_{kind}_{stem}.png")
 
 
 def write_png_rgb(filepath, width, height, rows):
@@ -36,7 +83,8 @@ def write_png_rgb(filepath, width, height, rows):
 def _render_region(name, x0, y0, x1, y1, out_file, size=512):
     sx = size / (x1 - x0)
     sy = size / (y1 - y0)
-    w, h, px = decode_png(f"challenge_sample/{name}.png")
+    png_path = _resolve_input_png(name)
+    w, h, px = decode_png(png_path)
     mask = binarize(px, w, h)
     rows = [bytearray([255] * (size * 3)) for _ in range(size)]
     for y in range(size):
@@ -63,23 +111,23 @@ def _render_region(name, x0, y0, x1, y1, out_file, size=512):
                                     off = (gx+dx) * 3
                                     rows[gy+dy][off:off+3] = bytes(color)
 
-    draw(f"challenge_sample_results/{name}.svg", (0, 160, 0))
-    draw(f"out/{name}.svg", (220, 0, 0))
+    draw(_resolve_svg_path(name, which="ref"), (0, 160, 0))
+    draw(_resolve_svg_path(name, which="out"), (220, 0, 0))
     write_png_rgb(out_file, size, size, rows)
     print("wrote", out_file)
 
 
 def overlay(names):
     for name in names:
-        _render_region(name, 0, 0, 1024, 1024, f"viz_overlay_{name}.png")
+        _render_region(name, 0, 0, 1024, 1024, _output_path(name, "overlay"))
 
 
 def zoom(name, x0, y0, x1, y1):
-    _render_region(name, x0, y0, x1, y1, f"viz_zoom_{name}.png")
+    _render_region(name, x0, y0, x1, y1, _output_path(name, "zoom"))
 
 
 def cover(name, which="out"):
-    svg = f"out/{name}.svg" if which == "out" else f"challenge_sample_results/{name}.svg"
+    svg = _resolve_svg_path(name, which=which)
     size = 256
     m = _mask_grid(name, size)
     s = _svg_full_stroke_grid(svg, size)
@@ -97,7 +145,7 @@ def cover(name, which="out"):
             else:
                 row += b'\xff\xff\xff'
         rows.append(row)
-    out_file = f"viz_cover_{name}_{which}.png"
+    out_file = _output_path(f"{name}_{which}", "cover")
     write_png_rgb(out_file, size, size, rows)
     print("wrote", out_file)
 
