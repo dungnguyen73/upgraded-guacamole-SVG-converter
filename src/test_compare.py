@@ -44,6 +44,7 @@ def _resolve_svg_path(name, which="out"):
         ]
     else:
         candidates = [
+            os.path.join(repo_root, "challenge_reference", f"{name}.svg"),
             os.path.join(repo_root, "pictographic-challenge", "challenge_sample_results", f"{name}.svg"),
             os.path.join(repo_root, "challenge_sample_results", f"{name}.svg"),
         ]
@@ -405,4 +406,7 @@ def run_all_tests():
 
 
 if __name__ == '__main__':
-    run_all_tests()
+    results = run_all_tests()
+    if '--json' in sys.argv:
+        import json
+        print('__JSON__' + json.dumps(results))
