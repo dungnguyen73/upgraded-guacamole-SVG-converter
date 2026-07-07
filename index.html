@@ -289,6 +289,16 @@
           <button type="submit">Convert PNG to SVG</button>
         </form>
         <div class="upload-results" id="uploadResults"></div>
+
+      <div class="toolbar" style="margin-top:16px;">
+        <button id="downloadSvgBtn" type="button" disabled>
+          Download
+        </button>
+
+        <button id="copySvgBtn" type="button" disabled>
+          Copy SVG Source
+        </button>
+      </div>
       </div>
       <div class="panel">
         <h2>Upload Output</h2>
@@ -330,6 +340,10 @@
     const uploadViewer = document.getElementById('uploadViewer');
     const uploadStatus = document.getElementById('uploadStatus');
     const reloadButton = document.getElementById('reloadButton');
+    const downloadSvgBtn = document.getElementById('downloadSvgBtn');
+    const copySvgBtn = document.getElementById('copySvgBtn');
+
+    let uploadedSvgUrl = null;
 
     function populateShapes() {
       SHAPES.forEach(shape => {
@@ -384,6 +398,9 @@
     }
 
     async function uploadPng(event) {
+      uploadedSvgUrl = null;
+      downloadSvgBtn.disabled = true;
+      copySvgBtn.disabled = true;
       event.preventDefault();
       uploadResults.textContent = '';
       uploadStatus.textContent = '';
@@ -425,10 +442,45 @@
         uploadResults.innerHTML = `Converted SVG: <a href="${result.svg_url}" target="_blank">${result.filename}</a>${note}`;
         uploadViewer.data = result.svg_url;
         uploadStatus.textContent = result.reference_message || `Saved to ${result.svg_url}`;
+        uploadedSvgUrl = result.svg_url;
+
+        downloadSvgBtn.disabled = false;
+        copySvgBtn.disabled = false;
       } catch (error) {
         uploadResults.textContent = `Upload error: ${error.message}`;
       }
     }
+
+    downloadSvgBtn.addEventListener("click", () => {
+      if (!uploadedSvgUrl) return;
+
+      const link = document.createElement("a");
+      link.href = uploadedSvgUrl;
+      link.download = uploadedSvgUrl.split("/").pop() || "converted.svg";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+    
+    copySvgBtn.addEventListener("click", async () => {
+      if (!uploadedSvgUrl) return;
+
+      try {
+        const response = await fetch(uploadedSvgUrl);
+        const svgText = await response.text();
+
+        await navigator.clipboard.writeText(svgText);
+
+        copySvgBtn.textContent = "✓ Copied!";
+        setTimeout(() => {
+          copySvgBtn.textContent = "📋 Copy SVG Source";
+        }, 2000);
+
+      } catch (err) {
+        alert("Failed to copy SVG source.");
+        console.error(err);
+      }
+    });
 
     function init() {
       populateShapes();
