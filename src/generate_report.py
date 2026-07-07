@@ -42,6 +42,8 @@ def _read_svg(path):
             content = f.read()
         if content.lstrip().startswith("<?xml"):
             content = content[content.index("?>") + 2:].lstrip()
+        # Normalize aspect ratio for consistent gallery previews.
+        content = content.replace('preserveAspectRatio="none"', 'preserveAspectRatio="xMidYMid meet"')
         return content
     except FileNotFoundError:
         return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50" fill="#ccc" font-size="12">Not found</text></svg>'
@@ -219,10 +221,8 @@ def build_report():
     .viewer-col{padding:14px;border-right:1px solid var(--border)}
     .viewer-col:last-child{border-right:none}
     .viewer-label{font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
-    .viewer-frame{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;min-height:170px;padding:10px;overflow:hidden}
-    .png-frame img{max-width:100%;max-height:170px;object-fit:contain}
-    .svg-frame{background:#fff}
-    .svg-frame svg{max-width:100%;max-height:190px;width:100%;height:auto}
+    .viewer-frame{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;width:100%;padding:8px;overflow:hidden}
+    .viewer-frame img,.viewer-frame svg{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;display:block}
     .missing{color:var(--text-3);font-size:.8rem}
     .site-footer{text-align:center;padding:22px;font-size:.78rem;color:var(--text-3);border-top:1px solid var(--border);background:var(--surface)}
     .site-footer a{color:var(--accent)}
