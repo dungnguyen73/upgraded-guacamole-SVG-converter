@@ -9,7 +9,7 @@ This document defines the canonical processing pipeline for extracting centerlin
 # Guiding Principles
 
 - Follow the challenge hint as closely as possible:
-  > PNG → Binary Mask → Contour Trace → Perpendicular Rays → Midpoints → Connect into Paths.
+  > PNG → Binary Mask → Chamfer Distance Transform → Contour Trace → Tangent/Normal Estimation → Perpendicular Rays → Midpoints → Connect into Paths.
 - Prioritize geometric correctness over heuristics.
 - Preserve topology (endpoints, branches, loops, junctions).
 - Keep the centerline centered within the stroke.
@@ -22,61 +22,43 @@ This document defines the canonical processing pipeline for extracting centerlin
 ```
 PNG
     ↓
-Decode
+Decode and Binarize
     ↓
-Binarize
+Distance Transform
     ↓
-Chamfer Distance Transform
-    ↓
-Contour Trace
+Contour Trace and Geometry Estimation
     ↓
 Perpendicular Ray Marching
     ↓
-Midpoint Samples
+Centeredness Filtering
     ↓
-Chain by Contour Order
+Midpoint Chaining
     ↓
-Clearance Jump Split
+Split, Dedupe, and Prune
     ↓
-Dedupe
+Junction Resolution and Topology Finalization
     ↓
-Junction Resolution
-    ↓
-Topology Split / Connect
-    ↓
-RDP Simplification
-    ↓
-Axis Snap
-    ↓
-Resample & Smooth
-    ↓
-SVG
+Simplify, Snap, Smooth, and Write SVG
 ```
 
 ---
 
-# Stage 1 — Decode PNG
+# Stage 1 — Decode PNG and Normalize Input
 
 ## Goal
 
-Load the PNG image without external CV libraries.
+Load the PNG image without external CV libraries and prepare it for later processing.
 
-## Requirements
+## Sub-steps
 
 - Support 1024×1024 PNG files.
 - Decode RGB/RGBA images.
 - Reconstruct PNG scanlines.
-- Produce a raster image.
-
-Output:
-
-```
-Image[y][x]
-```
+- Produce a raster image as `Image[y][x]`.
 
 ---
 
-# Stage 2 — Binarization
+# Stage 2 — Binarize the Image
 
 ## Goal
 
@@ -89,7 +71,7 @@ mask[y][x]
 0 = background
 ```
 
-Requirements:
+## Sub-steps
 
 - Handle white or transparent backgrounds.
 - Produce a clean binary mask.
@@ -97,311 +79,121 @@ Requirements:
 
 ---
 
-# Stage 3 — Chamfer Distance Transform
+# Stage 3 — Compute the Chamfer Distance Transform
 
 ## Goal
 
-Compute an approximate Euclidean distance from every foreground pixel to the nearest boundary.
+Estimate local clearance from every foreground pixel to the nearest boundary.
 
 ```
 distance[y][x]
 ```
 
-Each foreground pixel stores its local clearance.
+## Sub-steps
 
-Example:
-
-```
-1111111
-1222221
-1233321
-1222221
-1111111
-```
-
-The distance field is later used to verify whether midpoint samples are truly centered.
+- Use a 3-4 chamfer metric as an approximate distance field.
+- Store local clearance values for later centeredness checks.
+- Use the distance map to verify whether midpoint candidates are truly centered.
 
 ---
 
-# Stage 4 — Contour Tracing
+# Stage 4 — Trace Contours and Estimate Geometry
 
 ## Goal
 
-Extract all contours using Moore Neighbor tracing.
+Recover the boundary geometry of the shape and estimate the local orientation at each contour point.
 
-Requirements:
+## Sub-steps
 
-- Trace every connected component.
-- Trace outer contours.
-- Trace inner contours (holes).
-- Preserve contour ordering.
-
-Output:
-
-```
-Contour
-
-[
-    p0,
-    p1,
-    p2,
-    ...
-]
-```
-
-Each contour is an ordered list of boundary pixels.
+- Trace every connected component with Moore-style contour following.
+- Track outer contours and holes.
+- Estimate the local tangent at each contour sample.
+- Derive an inward-pointing normal from the tangent and the mask.
 
 ---
 
-# Stage 5 — Tangent & Normal Estimation
-
-For each contour point:
-
-1. Estimate the tangent using finite differences over a local window.
-2. Rotate the tangent by 90°.
-3. Determine the inward direction by checking the binary mask.
-4. Normalize to a unit vector.
-
-Output:
-
-```
-Point
-Tangent
-Inward Normal
-```
-
----
-
-# Stage 6 — Perpendicular Ray Marching
+# Stage 5 — March Perpendicular Rays
 
 ## Goal
 
-Cast a ray from each contour point inward.
+Cast a ray from each contour point inward to find the opposite boundary.
 
-Procedure:
+## Sub-steps
 
-1. March along the inward normal.
-2. Continue until leaving the foreground.
-3. Record the opposite boundary.
-4. Compute:
-
-```
-Chord
-Midpoint
-Half Width
-```
-
-Definitions:
-
-```
-Chord = entry → exit
-
-Midpoint = (entry + exit)/2
-
-HalfWidth = chord_length / 2
-```
-
-Each successful ray produces one midpoint sample.
+- March along the inward normal until leaving the foreground.
+- Record the entry and exit points of the chord.
+- Compute the midpoint and half-width of each chord.
 
 ---
 
-# Stage 7 — Centeredness Filter
+# Stage 6 — Filter Centeredness and Sample Midpoints
 
-Not every ray is valid.
+## Goal
 
-For every midpoint:
+Keep only midpoint candidates that are plausible medial-axis points.
 
-```
-expected_clearance = half_chord_length
+## Sub-steps
 
-actual_clearance = chamfer_distance(midpoint)
-```
-
-Accept the midpoint only if:
-
-```
-actual_clearance ≈ expected_clearance
-```
-
-Reject rays that:
-
-- stop too early
-- cross diagonally
-- intersect adjacent branches
-- occur near sharp caps
-- occur inside unstable junction regions
-
-This stage greatly improves robustness around junctions.
+- Compare the actual clearance from the distance transform with the expected half-chord length.
+- Reject rays that stop too early, cross diagonally, or occur in unstable junction regions.
+- Keep the remaining samples as valid midpoint candidates.
 
 ---
 
-# Stage 8 — Chain Midpoints by Contour Order
+# Stage 7 — Chain Midpoints into Candidate Paths
 
-Instead of constructing an immediate proximity graph:
+## Goal
 
-- preserve contour order
-- connect consecutive valid midpoint samples
+Turn the accepted samples into continuous centerline candidates.
 
-Result:
+## Sub-steps
 
-```
-Contour
-
-↓
-
-Midpoint Chain
-```
-
-This naturally forms continuous centerline candidates.
+- Preserve contour order.
+- Connect consecutive valid midpoint samples into chains.
+- Allow wrap-around linking when a contour closes back on itself.
 
 ---
 
-# Stage 9 — Clearance Jump Split
+# Stage 8 — Split, Dedupe, and Prune Fragments
 
-A sudden clearance change usually indicates:
+## Goal
 
-- junction
-- corner
-- stroke transition
-- invalid correspondence
+Clean up the raw chains before topology is finalized.
 
-If:
+## Sub-steps
 
-```
-|clearance(i+1)-clearance(i)| > threshold
-```
-
-split the chain.
-
-This prevents unrelated stroke regions from remaining connected.
+- Split a chain when the clearance changes abruptly, which often indicates a junction or a bad correspondence.
+- Merge duplicate midpoint chains from opposite sides of the same stroke.
+- Remove fragments that are fully covered by a longer, stronger path.
 
 ---
 
-# Stage 10 — Dedupe
+# Stage 9 — Resolve Junctions and Finalize Topology
 
-Each stroke is sampled twice:
+## Goal
 
-- once from each contour side.
+Reconstruct the skeleton graph so branches, loops, and junctions are represented consistently.
 
-Duplicate midpoint chains should be merged.
+## Sub-steps
 
-Requirements:
-
-- compare overlapping chains
-- keep the longest consistent chain
-- remove duplicate tracks
-
-Do not merge unrelated branches.
+- Detect junctions such as T-, Y-, and X-shaped intersections.
+- Reconnect broken branches through explicit graph nodes.
+- Preserve loops and branch topology in the final skeleton graph.
 
 ---
 
-# Stage 11 — Junction Resolution
+# Stage 10 — Simplify, Snap, Smooth, and Write SVG
 
-This stage reconstructs topology.
+## Goal
 
-Goals:
+Turn the finalized topology into clean, compact SVG paths.
 
-- detect T-junctions
-- detect Y-junctions
-- detect X-junctions
-- reconnect broken branches
-- create stable junction nodes
+## Sub-steps
 
-Junctions should be treated as explicit graph nodes rather than relying solely on nearest-neighbor proximity.
-
----
-
-# Stage 12 — Topology Split / Connect
-
-Convert midpoint chains into the final graph.
-
-Operations include:
-
-- split paths at junction hubs
-- reconnect neighboring branches
-- insert short connector paths where necessary
-- preserve loops
-- preserve branch topology
-
-Output:
-
-```
-Skeleton Graph
-
-Nodes
-Edges
-Ordered Paths
-```
-
----
-
-# Stage 13 — RDP Simplification
-
-Apply the Ramer–Douglas–Peucker algorithm.
-
-Goals:
-
-- reduce vertex count
-- preserve shape
-- maintain topology
-
----
-
-# Stage 14 — Axis Snap
-
-Many icons contain perfectly horizontal or vertical strokes.
-
-After simplification:
-
-- detect nearly horizontal segments
-- detect nearly vertical segments
-
-Snap them to exact axes when within tolerance.
-
-This improves SVG cleanliness and visual quality.
-
----
-
-# Stage 15 — Resample & Smooth
-
-Apply optional smoothing:
-
-- moving average
-- Gaussian smoothing
-- spline interpolation (if appropriate)
-
-Requirements:
-
-- preserve endpoints
-- preserve junctions
-- avoid oversmoothing corners
-
----
-
-# Stage 16 — SVG Generation
-
-Generate SVG paths.
-
-Requirements:
-
-- preserve graph topology
-- preserve path ordering
-- emit separate paths for junction connectors if needed
-
-Output format:
-
-```xml
-<svg viewBox="0 0 1024 1024">
-    <path
-        fill="none"
-        stroke="black"
-        stroke-width="45"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        d="..."
-    />
-</svg>
-```
+- Apply Ramer–Douglas–Peucker simplification and fit straight segments where appropriate.
+- Snap near-horizontal and near-vertical segments to exact axes.
+- Resample and smooth the polylines while preserving endpoints and junctions.
+- Write the final SVG output with the chosen stroke width.
 
 ---
 

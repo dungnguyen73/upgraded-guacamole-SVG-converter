@@ -17,6 +17,42 @@ import math
 import xml.etree.ElementTree as ET
 
 
+def _repo_root():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _resolve_input_png(name):
+    repo_root = _repo_root()
+    candidates = [
+        os.path.join(repo_root, "input", f"{name}.png"),
+        os.path.join(repo_root, "pictographic-challenge", "challenge_sample", f"{name}.png"),
+        os.path.join(repo_root, "challenge_sample", f"{name}.png"),
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return candidates[0]
+
+
+def _resolve_svg_path(name, which="out"):
+    repo_root = _repo_root()
+    if which == "out":
+        candidates = [
+            os.path.join(repo_root, "converted-results", f"{name}.svg"),
+            os.path.join(repo_root, "preview-results", f"{name}.svg"),
+            os.path.join(repo_root, "out", f"{name}.svg"),
+        ]
+    else:
+        candidates = [
+            os.path.join(repo_root, "pictographic-challenge", "challenge_sample_results", f"{name}.svg"),
+            os.path.join(repo_root, "challenge_sample_results", f"{name}.svg"),
+        ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return candidates[0]
+
+
 def parse_svg_paths(svg_path):
     """Extract all path data strings from an SVG file."""
     try:
@@ -185,7 +221,7 @@ def _mask_grid(name, size=256):
     """Downsample the input PNG's binary mask to the metric grid."""
     from png_decoder import decode_png
     from contour_sampling import binarize
-    w, h, px = decode_png(f"challenge_sample/{name}.png")
+    w, h, px = decode_png(_resolve_input_png(name))
     mask = binarize(px, w, h)
     grid = bytearray(size * size)
     for y in range(size):
@@ -224,10 +260,21 @@ def reconstruction_iou(name, svg_path):
     return iou
 
 
+def classify_result(iou, dice, recon_out):
+    """Apply the benchmark rubric to a set of metrics."""
+    if recon_out >= 0.94 and iou >= 0.80 and dice >= 0.88:
+        return "Excellent"
+    if recon_out >= 0.90 and iou >= 0.65 and dice >= 0.78:
+        return "Good"
+    if recon_out >= 0.85 and iou >= 0.50 and dice >= 0.65:
+        return "Average"
+    return "Poor"
+
+
 def test_one_shape(name):
     """Compare one shape's output against reference."""
-    ref_path = f"challenge_sample_results/{name}.svg"
-    out_path = f"out/{name}.svg"
+    ref_path = _resolve_svg_path(name, which="ref")
+    out_path = _resolve_svg_path(name, which="out")
 
     if not os.path.exists(ref_path):
         return {"error": f"Reference not found: {ref_path}"}
@@ -280,6 +327,10 @@ def test_one_shape(name):
 
     endpoint_score = matched / max(len(out_eps), 1) if out_eps else 1.0
 
+    recon_out = round(reconstruction_iou(name, out_path), 4)
+    recon_ref = round(reconstruction_iou(name, ref_path), 4)
+    label = classify_result(iou, dice, recon_out)
+
     return {
         "ref_paths": ref_count,
         "out_paths": out_count,
@@ -289,8 +340,9 @@ def test_one_shape(name):
         "iou": round(iou, 4),
         "dice": round(dice, 4),
         "endpoint_match": round(endpoint_score, 4),
-        "recon_out": round(reconstruction_iou(name, out_path), 4),
-        "recon_ref": round(reconstruction_iou(name, ref_path), 4),
+        "recon_out": recon_out,
+        "recon_ref": recon_ref,
+        "label": label,
     }
 
 
@@ -305,7 +357,7 @@ def run_all_tests():
     print("(RecOut/RecRef = shape reconstruction IoU of our output / of the reference)")
     print("=" * 96)
     print(f"{'Shape':<25} {'Ref':>5} {'Out':>5} {'Diff':>5} {'IoU':>8} {'Dice':>8} "
-          f"{'EndPt':>8} {'RecOut':>8} {'RecRef':>8}")
+          f"{'EndPt':>8} {'RecOut':>8} {'RecRef':>8} {'Label':>10}")
     print("-" * 96)
 
     results = {}
@@ -330,13 +382,14 @@ def run_all_tests():
             print(f"{shape:<25} {r['ref_paths']:>5} {r['out_paths']:>5} "
                   f"{r['path_diff']:>+5} {r['iou']:>8.3f} {r['dice']:>8.3f} "
                   f"{r['endpoint_match']:>8.3f} {r['recon_out']:>8.3f} "
-                  f"{r['recon_ref']:>8.3f} {flag}")
+                  f"{r['recon_ref']:>8.3f} {r['label']:>10} {flag}")
 
     print("-" * 96)
     if n > 0:
+        avg_label = classify_result(total_iou / n, total_dice / n, total_ro / n)
         print(f"{'AVERAGE':<25} {'':>5} {'':>5} {'':>5} "
               f"{total_iou/n:>8.3f} {total_dice/n:>8.3f} {'':>8} "
-              f"{total_ro/n:>8.3f} {total_rr/n:>8.3f}")
+              f"{total_ro/n:>8.3f} {total_rr/n:>8.3f} {avg_label:>10}")
     print("=" * 96)
 
     # Per-shape details

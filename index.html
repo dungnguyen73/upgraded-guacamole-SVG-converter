@@ -252,6 +252,7 @@
         <h2>Overlay Diagnostic</h2>
         <div class="viewer-frame"><img id="overlayViewer" src="" alt="Overlay Visualization" /></div>
         <div class="status" id="overlayStatus"></div>
+        <div class="note">Overlay legend: red = converted output, green = reference SVG.</div>
       </div>
     </div>
 
@@ -327,7 +328,7 @@
       } else {
         element.src = url;
       }
-      statusElement.textContent = url;
+      statusElement.textContent = 'Loaded';
     }
 
     function updateView() {
