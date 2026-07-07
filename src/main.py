@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import argparse
 from png_decoder import decode_png
@@ -26,6 +27,43 @@ def estimate_stroke_width(paths, dt, w, h):
     # the global median, which is pulled down by junction blobs.
     half = clear[int(len(clear) * 0.72)]
     return max(40, min(80, int(round(2.0 * half))))
+
+
+def preview_png(png_path, output_dir, **kwargs):
+    """Generate an SVG plus lightweight preview assets for a PNG input."""
+    os.makedirs(output_dir, exist_ok=True)
+    base_name = os.path.splitext(os.path.basename(png_path))[0]
+    svg_path = os.path.join(output_dir, base_name + '.svg')
+    preview_path = os.path.join(output_dir, base_name + '_preview.png')
+    viewer_path = os.path.join(output_dir, base_name + '_viewer.html')
+
+    process_one(png_path, svg_path, **kwargs)
+    shutil.copyfile(png_path, preview_path)
+
+    viewer_html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{base_name} preview</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #111; color: #fff; }}
+    img {{ max-width: 100%; height: auto; border-radius: 12px; }}
+    iframe {{ width: 100%; height: 720px; border: 1px solid #444; border-radius: 12px; background: white; }}
+  </style>
+</head>
+<body>
+  <h1>{base_name}</h1>
+  <p>Generated SVG preview for uploaded image.</p>
+  <img src="{os.path.basename(preview_path)}" alt="Input preview" />
+  <h2>SVG</h2>
+  <iframe src="{os.path.basename(svg_path)}"></iframe>
+</body>
+</html>
+'''
+    with open(viewer_path, 'w', encoding='utf-8') as handle:
+        handle.write(viewer_html)
+
+    return svg_path, preview_path, viewer_path
 
 
 def process_one(png_path, svg_path, **kwargs):

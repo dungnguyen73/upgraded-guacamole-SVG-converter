@@ -105,6 +105,9 @@ class UploadHandler(SimpleHTTPRequestHandler):
             'filename': svg_name,
             'svg_url': _build_svg_url(svg_name),
             'png_url': f'/uploads/{upload_basename}',
+            'reference_available': False,
+            'reference_message': 'No reference SVG was available for this upload. The generated SVG is ready for preview and download.',
+            'mode': 'upload-only',
         }
         self._send_json(200, response)
 

@@ -201,6 +201,30 @@
       font-size: 0.95rem;
       line-height: 1.7;
     }
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 220px;
+      padding: 24px;
+      text-align: center;
+      color: #D1D5DB;
+      border: 1px dashed rgba(255,255,255,0.16);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+    }
+    .empty-state strong {
+      font-size: 1rem;
+      color: #FFFFFF;
+    }
+    .empty-state span {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      max-width: 34ch;
+    }
     @media (max-width: 720px) {
       header { padding: 40px 18px 28px; }
       main { padding: 0 18px 36px; }
@@ -316,13 +340,26 @@
       });
     }
 
-    function setViewerSource(element, url, statusElement) {
+    function setViewerSource(element, url, statusElement, fallbackMessage = 'Missing file path') {
+      const frame = element.parentElement;
+      const existingEmptyState = frame.querySelector('.empty-state');
+      if (existingEmptyState) {
+        existingEmptyState.remove();
+      }
+
       if (!url) {
         element.removeAttribute('src');
         element.removeAttribute('data');
-        statusElement.textContent = 'Missing file path';
+        element.style.display = 'none';
+        const emptyState = document.createElement('div');
+        emptyState.className = 'empty-state';
+        emptyState.innerHTML = `<strong>No preview available</strong><span>${fallbackMessage}</span>`;
+        frame.appendChild(emptyState);
+        statusElement.textContent = fallbackMessage;
         return;
       }
+
+      element.style.display = '';
       if (element.tagName.toLowerCase() === 'object') {
         element.data = url;
       } else {
@@ -334,7 +371,7 @@
     function updateView() {
       const shape = shapeSelect.value;
       setViewerSource(originalViewer, paths.original(shape), originalStatus);
-      setViewerSource(referenceViewer, paths.reference(shape), referenceStatus);
+      setViewerSource(referenceViewer, paths.reference(shape), referenceStatus, 'No reference SVG is available for this preview. Upload a PNG to generate a standalone SVG instead.');
       setViewerSource(convertedViewer, paths.converted(shape), convertedStatus);
       setViewerSource(overlayViewer, paths.overlay(shape), overlayStatus);
     }
@@ -382,9 +419,12 @@
           return;
         }
 
-        uploadResults.innerHTML = `Converted SVG: <a href="${result.svg_url}" target="_blank">${result.filename}</a>`;
+        const note = result.reference_available === false
+          ? '<div class="note">No reference SVG was available for this upload, so the conversion is shown as a standalone preview. You can still download the generated SVG and inspect it directly.</div>'
+          : '';
+        uploadResults.innerHTML = `Converted SVG: <a href="${result.svg_url}" target="_blank">${result.filename}</a>${note}`;
         uploadViewer.data = result.svg_url;
-        uploadStatus.textContent = `Saved to ${result.svg_url}`;
+        uploadStatus.textContent = result.reference_message || `Saved to ${result.svg_url}`;
       } catch (error) {
         uploadResults.textContent = `Upload error: ${error.message}`;
       }
