@@ -20,16 +20,18 @@ REPO_ROOT  = os.path.dirname(SCRIPT_DIR)
 
 sys.path.insert(0, SCRIPT_DIR)
 import test_compare  # noqa: E402
+import visualize     # noqa: E402
 
 SHAPES = [
     "letter_H", "letter_K", "arrow-turn-down-left",
     "arrow-pointer", "number_3", "number_6", "ampersand",
 ]
 
-INPUT_DIR   = os.path.join(REPO_ROOT, "input")
-OUT_SVG_DIR = os.path.join(REPO_ROOT, "out")
-REF_SVG_DIR = os.path.join(REPO_ROOT, "reference")
-DOCS_DIR    = os.path.join(REPO_ROOT, "docs")
+INPUT_DIR       = os.path.join(REPO_ROOT, "input")
+OUT_SVG_DIR     = os.path.join(REPO_ROOT, "out")
+REF_SVG_DIR     = os.path.join(REPO_ROOT, "reference")
+VIZ_OVERLAY_DIR = os.path.join(REPO_ROOT, "visualizations", "overlay")
+DOCS_DIR        = os.path.join(REPO_ROOT, "docs")
 
 
 # ---------------------------------------------------------------------------
@@ -107,15 +109,27 @@ def _shape_card(shape, r):
     png_uri = _png_data_uri(os.path.join(INPUT_DIR, f"{shape}.png"))
     out_svg = _read_svg(os.path.join(OUT_SVG_DIR, f"{shape}.svg"))
     ref_svg = _read_svg(os.path.join(REF_SVG_DIR, f"{shape}.svg"))
+    overlay_uri = _png_data_uri(os.path.join(VIZ_OVERLAY_DIR, f"viz_overlay_{shape}.png"))
     label   = r.get("label", "?")
     recon   = r.get("recon_out", "?")
     iou     = r.get("iou", "?")
     img_tag = f'<img src="{png_uri}" alt="{shape}">' if png_uri else '<span class="missing">Not found</span>'
+    overlay_html = ''
+    if overlay_uri:
+        overlay_html = f"""
+      <div class="overlay-panel" style="display:none">
+        <div class="overlay-inner">
+          <div class="viewer-label">Centerline Overlay &nbsp;<span class="overlay-legend">&#x2B24; gray = mask &nbsp; &#x2B24; <span style="color:#00c800">green</span> = reference &nbsp; &#x2B24; <span style="color:#dc0000">red</span> = ours</span></div>
+          <div class="viewer-frame overlay-frame"><img src="{overlay_uri}" alt="{shape} overlay"></div>
+        </div>
+      </div>"""
+    overlay_btn = '<button class="overlay-toggle" onclick="toggleOverlay(this)" title="Show centerline overlay">&#x1F50D; Overlay</button>' if overlay_uri else ''
     return f"""
     <div class="shape-card">
       <div class="card-header">
         <span class="card-title">{shape}</span>
         {_badge(label)}
+        {overlay_btn}
         <span class="card-meta">RecIoU <strong>{recon}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;IoU <strong>{iou}</strong></span>
       </div>
       <div class="viewers">
@@ -131,7 +145,7 @@ def _shape_card(shape, r):
           <div class="viewer-label">Reference SVG</div>
           <div class="viewer-frame svg-frame ref-svg">{ref_svg}</div>
         </div>
-      </div>
+      </div>{overlay_html}
     </div>"""
 
 
@@ -140,6 +154,8 @@ def _shape_card(shape, r):
 # ---------------------------------------------------------------------------
 
 def build_report():
+    print("[generate_report] Generating overlay visualizations...")
+    visualize.overlay(SHAPES)
     print("[generate_report] Running test metrics...")
     results = test_compare.run_all_tests()
 
@@ -224,6 +240,14 @@ def build_report():
     .viewer-frame{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;width:100%;padding:8px;overflow:hidden}
     .viewer-frame img,.viewer-frame svg{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;display:block}
     .missing{color:var(--text-3);font-size:.8rem}
+    .overlay-toggle{background:var(--accent-light);color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:3px 12px;font-size:.72rem;font-weight:600;cursor:pointer;transition:all .15s ease;font-family:var(--mono)}
+    .overlay-toggle:hover{background:var(--accent);color:#fff}
+    .overlay-toggle.active{background:var(--accent);color:#fff}
+    .overlay-panel{border-top:1px solid var(--border);padding:14px;background:var(--surface-2);animation:fadeIn .2s ease}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .overlay-inner{max-width:520px;margin:0 auto}
+    .overlay-frame{aspect-ratio:1/1;width:100%;background:#fff}
+    .overlay-legend{font-size:.65rem;font-weight:400;color:var(--text-3)}
     .site-footer{text-align:center;padding:22px;font-size:.78rem;color:var(--text-3);border-top:1px solid var(--border);background:var(--surface)}
     .site-footer a{color:var(--accent)}
     @media(max-width:700px){
@@ -292,6 +316,16 @@ def build_report():
   Pure Python standard library &nbsp;&middot;&nbsp;
   <a href="https://github.com/dungnguyen73/upgraded-guacamole-SVG-converter">GitHub</a>
 </footer>
+<script>
+function toggleOverlay(btn) {{
+  var card = btn.closest('.shape-card');
+  var panel = card.querySelector('.overlay-panel');
+  if (!panel) return;
+  var isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  btn.classList.toggle('active', isHidden);
+}}
+</script>
 </body>
 </html>
 """
