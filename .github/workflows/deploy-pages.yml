@@ -32,7 +32,7 @@ jobs:
 
       - name: Regenerate SVG outputs from input PNGs
         working-directory: src
-        run: python main.py ../input ../docs/converted-results
+        run: python main.py ../input ../out
 
       - name: Generate HTML results report
         working-directory: src

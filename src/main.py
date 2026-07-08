@@ -115,11 +115,11 @@ def process_one(png_path, svg_path, **kwargs):
 
 def main():
     p = argparse.ArgumentParser()
-    # If no args provided, resolve repo-level `input/` and `converted-results/`.
+    # If no args provided, resolve repo-level `input/` and `out/`.
     p.add_argument('input_dir', nargs='?', default=None,
                    help='Input folder containing PNGs (default: repo-level input/)')
     p.add_argument('output_dir', nargs='?', default=None,
-                   help='Output folder for SVGs (default: repo-level converted-results/)')
+                   help='Output folder for SVGs (default: repo-level out/)')
     p.add_argument('--stroke-width', type=int, default=None,
                    help='SVG stroke width (default: auto per shape)')
     p.add_argument('--spacing', type=float, default=RESAMPLE_SPACING)
@@ -136,7 +136,7 @@ def main():
     if args.input_dir is None:
         args.input_dir = os.path.join(repo_root, 'input')
     if args.output_dir is None:
-        args.output_dir = os.path.join(repo_root, 'converted-results')
+        args.output_dir = os.path.join(repo_root, 'out')
 
     os.makedirs(args.input_dir, exist_ok=True)
     os.makedirs(args.output_dir, exist_ok=True)

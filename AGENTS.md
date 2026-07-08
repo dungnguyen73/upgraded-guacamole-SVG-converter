@@ -16,13 +16,13 @@ This repository extracts centerline SVG paths from solid black PNG icons using a
 
 ## How to run
 - Run from the `source/` directory or pass explicit input/output paths. By
-	default CLI output is written to a repository-level `converted-results/`
+	default CLI output is written to a repository-level `out/`
 	folder (created automatically).
 
 ```bash
 cd source
-python main.py challenge_sample            # writes SVGs to ../converted-results
-python main.py challenge_sample ../my-out  # write to a custom folder
+python main.py input                       # writes SVGs to ../out
+python main.py input ../my-out             # write to a custom folder
 python test_compare.py
 python visualize.py overlay letter_H
 ```
@@ -30,7 +30,7 @@ python visualize.py overlay letter_H
 From the repo root:
 
 ```bash
-python source/main.py ../pictographic-challenge/challenge_sample
+python source/main.py ../input
 python source/test_compare.py
 ```
 

@@ -90,12 +90,13 @@ png2svg_centerline_extraction/
 │   ├── svg_writer.py             # SVG output generation
 │   ├── visualize.py              # Overlay and diagnostic generation
 │   └── test_compare.py           # Metric comparison harness
-├── pictographic-challenge/      # Sample inputs and reference assets used for comparison
-└── converted-results/           # Generated SVG outputs from the sample pipeline run
+├── input/                       # Sample input PNGs
+├── reference/                   # Reference SVGs used for comparison
+└── out/                         # Generated SVG outputs from the sample pipeline run
 ```
 
 ## What I would improve with more time
-
+- Interactive Parameter Tuning: Extend the local web dashboard to allow real-time adjustment of algorithm parameters (e.g. stroke width , RDP epsilon, smoothing window) with live SVG previews.
 - Better junction and topology handling for crossings and branch points
 - Adaptive sampling that responds to local stroke width and shape complexity
 - More shape-specific heuristics so difficult glyphs behave more like the reference

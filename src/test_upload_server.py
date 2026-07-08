@@ -14,8 +14,7 @@ class UploadServerTests(unittest.TestCase):
     def test_upload_response_marks_missing_reference_as_upload_only(self):
         sample_png = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'pictographic-challenge',
-            'challenge_sample',
+            'input',
             'letter_H.png',
         )
         self.assertTrue(os.path.exists(sample_png), sample_png)

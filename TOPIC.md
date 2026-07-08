@@ -3,7 +3,7 @@ You're given 7 PNG icons — 1024×1024, a single solid-black shape on a white/t
 
 An Hdrawn with a thick black stroke should come out as three thin stroked paths — two vertical, one horizontal — joined at the intersections. You're turning a filled shape back into the skeleton a person would draw with a pen.
 
-Sample inputs and reference SVGs: ./pictographic-challenge
+Sample inputs and reference SVGs: ./input and ./reference
 
 Output
 For each <name>.png, write <name>.svg with viewBox="0 0 1024 1024" and stroked <path> elements (fill="none") tracing the medial axis. The reference uses stroke-width="45" with rounded caps and joins — any reasonable width that resembles the original is fine.

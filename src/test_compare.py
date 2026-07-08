@@ -25,8 +25,6 @@ def _resolve_input_png(name):
     repo_root = _repo_root()
     candidates = [
         os.path.join(repo_root, "input", f"{name}.png"),
-        os.path.join(repo_root, "pictographic-challenge", "challenge_sample", f"{name}.png"),
-        os.path.join(repo_root, "challenge_sample", f"{name}.png"),
     ]
     for candidate in candidates:
         if os.path.exists(candidate):
@@ -38,15 +36,11 @@ def _resolve_svg_path(name, which="out"):
     repo_root = _repo_root()
     if which == "out":
         candidates = [
-            os.path.join(repo_root, "converted-results", f"{name}.svg"),
-            os.path.join(repo_root, "preview-results", f"{name}.svg"),
             os.path.join(repo_root, "out", f"{name}.svg"),
         ]
     else:
         candidates = [
-            os.path.join(repo_root, "challenge_reference", f"{name}.svg"),
-            os.path.join(repo_root, "pictographic-challenge", "challenge_sample_results", f"{name}.svg"),
-            os.path.join(repo_root, "challenge_sample_results", f"{name}.svg"),
+            os.path.join(repo_root, "reference", f"{name}.svg"),
         ]
     for candidate in candidates:
         if os.path.exists(candidate):
