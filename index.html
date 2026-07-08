@@ -321,9 +321,9 @@
       : window.location.origin;
 
     const paths = {
-      original: shape => `${assetRoot}/pictographic-challenge/challenge_sample/${shape}.png`,
-      reference: shape => `${assetRoot}/pictographic-challenge/challenge_sample_results/${shape}.svg`,
-      converted: shape => `${assetRoot}/converted-results/${shape}.svg`,
+      original: shape => `${assetRoot}/input/${shape}.png`,
+      reference: shape => `${assetRoot}/reference/${shape}.svg`,
+      converted: shape => `${assetRoot}/out/${shape}.svg`,
       overlay: shape => `${assetRoot}/visualizations/overlay/viz_overlay_${shape}.png`
     };
 

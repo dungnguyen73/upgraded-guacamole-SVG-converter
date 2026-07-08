@@ -27,8 +27,8 @@ SHAPES = [
 ]
 
 INPUT_DIR   = os.path.join(REPO_ROOT, "input")
-OUT_SVG_DIR = os.path.join(REPO_ROOT, "docs", "converted-results")
-REF_SVG_DIR = os.path.join(REPO_ROOT, "challenge_reference")
+OUT_SVG_DIR = os.path.join(REPO_ROOT, "out")
+REF_SVG_DIR = os.path.join(REPO_ROOT, "reference")
 DOCS_DIR    = os.path.join(REPO_ROOT, "docs")
 
 
