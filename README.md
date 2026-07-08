@@ -2,6 +2,8 @@
 
 This repository contains a pure-Python pipeline for turning PNG icons into thin centerline SVG paths. The goal is to recover the medial axis of each shape so it can be rendered as a clean skeleton instead of an outline.
 
+For quickly looking up the results, see [PNG → SVG Centerline Extraction](https://dungnguyen73.github.io/upgraded-guacamole-SVG-converter/). 
+
 ## Offered features
 
 - Batch conversion from PNG inputs to SVG outputs
